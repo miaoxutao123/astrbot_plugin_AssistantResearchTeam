@@ -16,6 +16,12 @@ class MyPlugin(Star):
 
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
+        # 打印所有可用的 Provider ID（调试用）
+        print("=== Available Providers ===")
+        for prov in self.context.get_all_providers():
+            print(f"  ID: {prov.meta().id}, Type: {type(prov).__name__}")
+        print("===========================")
+
         # 注册 gemini_search 工具
         self.context.add_llm_tools(GeminiSearchTool())
 
