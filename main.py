@@ -1,5 +1,7 @@
 from pydantic import Field
 from pydantic.dataclasses import dataclass
+from utils.scholar import ArxivTool
+from utils.smart_reader import smart_read_to_markdown
 
 from astrbot.api.star import Context, Star, register
 from astrbot.core.agent.run_context import ContextWrapper
@@ -13,6 +15,7 @@ class MyPlugin(Star):
         super().__init__(context)
         self.search_contexts: dict[str, list[dict]] = {}
         self.search_provider_id = config.get("search_provider_id", "gemini_with_search")
+        self.scholar_proxy_base_url = config.get("scholar_proxy_base_url")
 
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
@@ -64,7 +67,68 @@ class GeminiSearchTool(FunctionTool[AstrAgentContext]):
         )
         return llm_resp.completion_text
 
+@dataclass
+class ArxivSearchTool(FunctionTool[AstrAgentContext]):
+    name: str = "arxiv_search"
+    description: str = "Use ArxivTool to search for academic papers on arXiv based on keywords."
+    parameters: dict = Field(
+        default_factory=lambda: {
+            "type": "object",
+            "properties": {
+                "keywords": {
+                    "type": "string",
+                    "description": "Keywords to search for academic papers on arXiv.",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of search results to return.",
+                    "default": 3,
+                }
+            },
+            "required": ["keywords", "max_results"],
+        }
+    )
 
+    async def call(
+        self, context: ContextWrapper[AstrAgentContext], **kwargs
+    ) -> ToolExecResult:
+        keyword = kwargs.get("keywords")
+        proxy_base_url = self.context.context.config.get("scholar_proxy_base_url")
+        arxiv_tool = ArxivTool(proxy_base_url = proxy_base_url)
+        results = arxiv_tool.search(query=keyword, limit=3)
+
+        if not results:
+            return "No results found."
+
+        response_lines = []
+        for idx, paper in enumerate(results, start=1):
+            response_lines.append(f"{idx}. Title: {paper['title']}\n   Authors: {paper['authors']}\n   Year: {paper['year']}\n   Abstract: {paper['abstract']}\n   PDF URL: {paper.get('pdf_url', 'N/A')}\n")
+
+        return "\n".join(response_lines)
+
+@dataclass
+class SmartReader(FunctionTool[AstrAgentContext]):
+    name: str = "smart_reader"
+    description: str = "A tool to intelligently read and extract content from web pages or PDF documents given their URLs. It can handle dynamic web pages using a headless browser and extract text in Markdown format."
+    parameters: dict = Field(
+        default_factory=lambda: {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL of the web page or PDF document to read.",
+                },
+            },
+            "required": ["url"],
+        }
+    )
+
+    async def call(
+        self, context: ContextWrapper[AstrAgentContext], **kwargs
+    ) -> ToolExecResult:
+        url = kwargs.get("url")
+        markdown_content = await smart_read_to_markdown(url)
+        return markdown_content
 
 
 

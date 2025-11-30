@@ -5,5 +5,19 @@
         "hint": "前往服务提供商复制的聊天模型ID，例如 'gemini_with_search' 或其他启用搜索的服务商ID",
         "default": "gemini_with_search",
         "obvious_hint": true
+    },
+    "scholar_api_key": {
+        "description": "Semantic Scholar API Key，用于访问Semantic Scholar数据库",
+        "type": "string",
+        "hint": "前往Semantic Scholar官网申请API Key",
+        "default": ""
+    },
+    "scholar_proxy_base_url":{
+        "description": "Scholar搜索代理基础URL，用于通过代理访问Semantic Scholar API及arxiv",
+        "type": "string",
+        "hint": "可以通过cloudflare works实现免费反代，如果您有个人反代，请填写代理的基础URL，例如 'http://localhost:8000'",
+        "default": "",
+        "obvious_hint": true
     }
+
 }
