@@ -1,12 +1,13 @@
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from utils.scholar import ArxivTool
-from utils.smart_reader import smart_read_to_markdown
 
 from astrbot.api.star import Context, Star, register
 from astrbot.core.agent.run_context import ContextWrapper
 from astrbot.core.agent.tool import FunctionTool, ToolExecResult
 from astrbot.core.astr_agent_context import AstrAgentContext
+
+from .utils.scholar import ArxivTool
+from .utils.smart_reader import smart_read_to_markdown
 
 
 @register("deepresearch", "miaomiao", "基于Gemini的简单deepresearch实现", "0.0.1")
