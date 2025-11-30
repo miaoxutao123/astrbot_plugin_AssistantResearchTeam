@@ -99,8 +99,9 @@ class ArxivSearchTool(FunctionTool[AstrAgentContext]):
         self, context: ContextWrapper[AstrAgentContext], **kwargs
     ) -> ToolExecResult:
         keyword = kwargs.get("keywords")
+        max_results = kwargs.get("max_results", 3)
         arxiv_tool = ArxivTool(proxy_base_url=self.proxy_base_url)
-        results = arxiv_tool.search(query=keyword, limit=3)
+        results = await arxiv_tool.search(query=keyword, max_results=max_results)
 
         if not results:
             return "No results found."
