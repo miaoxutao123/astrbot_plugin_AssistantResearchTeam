@@ -306,7 +306,7 @@ async def smart_read_to_markdown(url: str, use_playwright: bool = True) -> str:
 if __name__ == "__main__":
     async def main():
         # 测试 PDF
-        test_url = "http://arxiv.org/pdf/2506.18783v1"
+        test_url = "http://arxiv.org/pdf/2507.06261v1"
         print("=" * 50)
         print("测试 PDF 文件")
         print("=" * 50)

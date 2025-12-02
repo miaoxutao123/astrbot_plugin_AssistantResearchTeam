@@ -8,7 +8,7 @@ from astrbot.core.astr_agent_context import AstrAgentContext
 
 from .utils.scholar import ArxivTool
 from .utils.smart_reader import smart_read_to_markdown
-
+from .utils.document_utils import DocumentManager,MarkdownToWordConverter
 
 @register("deepresearch", "miaomiao", "基于Gemini的简单deepresearch实现", "0.0.1")
 class MyPlugin(Star):
@@ -26,11 +26,12 @@ class MyPlugin(Star):
             print(f"  ID: {prov.meta().id}, Type: {type(prov).__name__}")
         print("===========================")
 
-        # 注册 gemini_search 工具
+        # 注册工具
         self.context.add_llm_tools(
             GeminiSearchTool(),
             ArxivSearchTool(proxy_base_url=self.scholar_proxy_base_url or ""),
-            SmartReader()
+            SmartReader(),
+            DocumentProceser()
         )
 
 
@@ -142,7 +143,73 @@ class SmartReader(FunctionTool[AstrAgentContext]):
         markdown_content = await smart_read_to_markdown(url)
         return markdown_content
 
+@dataclass
+class DocumentProceser(FunctionTool[AstrAgentContext]):
+    name: str = "Document_Proceser"
+    description: str = ""
+    parameters: dict = Field(
+        default_factory=lambda: {
+            "type": "object",
+            "properties": {
+                "document_type": {
+                    "type": "string",
+                    "description": "The type of the document to process.(markdown/docx)",
+                },
+                "document_content": {
+                    "type": "string",
+                    "description": "The content of the document to process. If creating a docx file, content should be in markdown format.",
+                },
+                "document_name": {
+                    "type": "string",
+                    "description": "The name of the document to process.",
+                },
+                "process_type": {
+                    "type": "string",
+                    "description": "The type of processing to perform on the document.(create/read/write(append)/write(cover)/delete/list)",
+                }
+            },
+            "required": ["document_type", "document_name", "process_type"],
+        }
+    )
 
+    async def call(
+        self, context: ContextWrapper[AstrAgentContext], **kwargs
+    ) -> ToolExecResult:
+        dm = DocumentManager(base_dir="./documents")
+        mtw = MarkdownToWordConverter()
+
+        document_type = kwargs.get("document_type")
+        document_name = kwargs.get("document_name")
+        process_type = kwargs.get("process_type")
+        document_content = kwargs.get("document_content", "")
+
+        match process_type:
+            case "create":
+                if document_type == "markdown":
+                    filepath = dm.create(document_name, document_content)
+                    return f"Markdown 文件已创建: {filepath}"
+                elif document_type == "docx":
+                    filepath = mtw.convert(document_content, document_name)
+                    return f"Word 文件已创建: {filepath}"
+                else:
+                    return "不支持的文档类型。"
+            case "read":
+                content = dm.read(document_name)
+                return content
+            case "write(append)":
+                dm.write(document_name, document_content, append= True)
+                return f"文件已追加内容: {document_name}"
+            case "write(cover)":
+                dm.write(document_name, document_content, append= False)
+                return f"文件已覆盖内容: {document_name}"
+            case "delete":
+                dm.delete(document_name)
+                return f"文件已删除: {document_name}"
+            case "list":
+                files = dm.list_files()
+                return "md文件列表:\n" + "\n".join(files)
+            case _:
+                return "不支持的处理方法类型。"
 
 # @dataclass
 # class BilibiliTool(FunctionTool[AstrAgentContext]):
