@@ -1,6 +1,6 @@
-name: astrbot_plugin_deepresearch 
-display_name: DeepResearch 
-desc: 基于Gemini的简单deepresearch实现，提供联网搜索能力 
+name: astrbot_plugin_AssistantResearchTeam 
+display_name: AssistantResearchTeam 
+desc: 一个基于astrbot的ai研究助手插件
 version: v0.0.1 
 author: miaomiao 
-repo: https://github.com/Soulter/astrbot_plugin_deepresearch 
+repo: https://github.com/miaoxutao123/astrbot_plugin_AssistantResearchTeam
