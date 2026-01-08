@@ -6,7 +6,7 @@
 
 **联网搜索** - 利用 Gemini 的 Google Search Grounding 能力进行实时网络搜索，返回带引用来源的详细结果。
 
-**学术论文检索** - 支持 ArXiv 论文搜索，可自定义返回结果数量，获取论文标题、作者、摘要及 PDF 链接。
+**学术论文检索** - 支持 ArXiv 和知网 (CNKI) 论文搜索，可自定义返回结果数量，获取论文标题、作者、摘要及链接。
 
 **智能阅读器** - 自动识别 URL 类型（网页/PDF），使用 Playwright 渲染动态页面，提取正文内容并转换为 Markdown 格式，同时提取元数据和参考文献。
 
@@ -25,9 +25,11 @@
 ### 依赖安装
 
 ```bash
-pip install aiohttp xmltodict python-docx pymupdf trafilatura playwright
+pip install aiohttp xmltodict python-docx pymupdf trafilatura playwright DrissionPage
 playwright install chromium
 ```
+
+> 注：知网搜索功能首次运行时会自动下载 Chromium 浏览器。
 
 ### 插件配置
 
@@ -53,9 +55,11 @@ playwright install chromium
 |----------|----------|
 | `gemini_search` | 使用 Gemini 进行联网搜索 |
 | `arxiv_search` | 搜索 ArXiv 学术论文 |
+| `cnki_search` | 搜索知网 (CNKI) 中文学术论文 |
 | `smart_reader` | 智能读取网页或 PDF 内容 |
-| `Document_Proceser` | 文档创建、读取、写入、删除 |
+| `Document_Processor` | 文档创建、读取、写入、删除 |
 | `send_file` | 向用户发送文件 |
+| `document_reviewer` | 文档审核子代理 |
 
 ## 使用示例
 
@@ -63,8 +67,9 @@ playwright install chromium
 
 - "帮我搜索最近关于大语言模型的新闻" → 调用 `gemini_search`
 - "查找 ArXiv 上关于 LLM Agent 的论文" → 调用 `arxiv_search`
+- "搜索知网上关于深度学习的论文" → 调用 `cnki_search`
 - "阅读这篇论文的内容：https://arxiv.org/pdf/xxx" → 调用 `smart_reader`
-- "把研究结果整理成 Word 文档" → 调用 `Document_Proceser`
+- "把研究结果整理成 Word 文档" → 调用 `Document_Processor`
 - "把文档发给我" → 调用 `send_file`
 
 ## 开发者信息

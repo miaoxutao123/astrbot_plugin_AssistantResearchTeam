@@ -12,7 +12,7 @@ from astrbot.core.message.message_event_result import MessageChain
 from astrbot.core.agent.tool import ToolSet
 
 from .utils.document_utils import DocumentManager, MarkdownToWordConverter
-from .utils.scholar import ArxivTool
+from .utils.scholar import ArxivTool, CNKITool
 from .utils.smart_reader import smart_read_to_markdown
 
 
@@ -38,6 +38,7 @@ class MyPlugin(Star):
         self.context.add_llm_tools(
             GeminiSearchTool(),
             arxiv_tool,
+            CNKISearchTool(),
             SmartReader(),
             DocumentProcessor(),
             SendFileTool(),
@@ -132,6 +133,52 @@ class ArxivSearchTool(FunctionTool[AstrAgentContext]):
         return "\n".join(response_lines)
 
 @dataclass
+class CNKISearchTool(FunctionTool[AstrAgentContext]):
+    name: str = "cnki_search"
+    description: str = "Use CNKITool to search for Chinese academic papers on CNKI (知网) based on keywords."
+    parameters: dict = Field(
+        default_factory=lambda: {
+            "type": "object",
+            "properties": {
+                "keywords": {
+                    "type": "string",
+                    "description": "Keywords to search for academic papers on CNKI (知网).",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of search results to return.",
+                    "default": 3,
+                }
+            },
+            "required": ["keywords", "max_results"],
+        }
+    )
+
+    async def call(
+        self, context: ContextWrapper[AstrAgentContext], **kwargs
+    ) -> ToolExecResult:
+        keyword = kwargs.get("keywords", "")
+        if not keyword:
+            return "Keywords are required."
+        max_results = kwargs.get("max_results", 3)
+        print(f"[CNKISearchTool] Searching for: {keyword}, max_results: {max_results}")
+        cnki_tool = CNKITool(headless=True)
+        results = await cnki_tool.search(query=keyword, max_results=max_results)
+        print(f"[CNKISearchTool] Results: {results}")
+
+        if not results:
+            return "No results found."
+
+        if results and "error" in results[0]:
+            return f"Search error: {results[0]['error']}"
+
+        response_lines = []
+        for idx, paper in enumerate(results, start=1):
+            response_lines.append(f"{idx}. Title: {paper.get('title', 'N/A')}\n   Authors: {paper.get('authors', 'N/A')}\n   Year: {paper.get('year', 'N/A')}\n   Abstract: {paper.get('abstract', 'N/A')}\n   URL: {paper.get('pdf_url', 'N/A')}\n")
+
+        return "\n".join(response_lines)
+
+@dataclass
 class SmartReader(FunctionTool[AstrAgentContext]):
     name: str = "smart_reader"
     description: str = "A tool to intelligently read and extract content from web pages or PDF documents given their URLs. It can handle dynamic web pages using a headless browser and extract text in Markdown format."
@@ -160,7 +207,7 @@ class SmartReader(FunctionTool[AstrAgentContext]):
 @dataclass
 class DocumentProcessor(FunctionTool[AstrAgentContext]):
     name: str = "Document_Processor"
-    description: str = ""
+    description: str = "A tool to create, read, write, delete, and list markdown or docx documents. Supports operations: create, read, write(append), write(cover), delete, list."
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",

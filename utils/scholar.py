@@ -4,9 +4,11 @@
 支持：
 - ArXiv 搜索
 - Semantic Scholar 搜索
+- 知网 (CNKI) 搜索
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 import aiohttp
 import xmltodict
@@ -130,6 +132,56 @@ class ArxivTool(AcademicBaseTool):
             return [{"error": f"ArXiv Error: {str(e)}"}]
 
 
+class CNKITool:
+    """知网搜索工具（需要安装 zhiwang 包）"""
+    
+    def __init__(self, headless: bool = True):
+        self.headless = headless
+        self._executor = ThreadPoolExecutor(max_workers=1)
+    
+    async def search(self, query: str, max_results: int = 3) -> list[dict]:
+        try:
+            from utils.cnki import search_cnki
+        except ImportError:
+            import sys
+            import os
+            utils_dir = os.path.dirname(os.path.abspath(__file__))
+            if utils_dir not in sys.path:
+                sys.path.insert(0, utils_dir)
+            try:
+                from cnki import search_cnki
+            except ImportError as e:
+                return [{"error": f"CNKI 模块未找到: {e}"}]
+        
+        loop = asyncio.get_event_loop()
+        try:
+            raw_results = await loop.run_in_executor(
+                self._executor,
+                lambda: search_cnki(
+                    keyword=query,
+                    max_results=max_results,
+                    headless=self.headless,
+                    get_details=True
+                )
+            )
+            
+            results = []
+            for item in raw_results:
+                results.append({
+                    "source": "CNKI",
+                    "title": item.get("title"),
+                    "authors": item.get("authors") or item.get("first_author", ""),
+                    "year": (item.get("date") or "")[:4],
+                    "abstract": item.get("abstract") or "无摘要",
+                    "pdf_url": item.get("url"),
+                    "doi": item.get("doi"),
+                    "keywords": item.get("keywords")
+                })
+            return results
+        except Exception as e:
+            return [{"error": f"CNKI Error: {str(e)}"}]
+
+
 # --- 测试运行 ---
 if __name__ == "__main__":
     import sys
@@ -163,6 +215,15 @@ if __name__ == "__main__":
         print("=" * 60)
         s2 = SemanticScholarTool(WORKER_URL, api_key=S2_API_KEY)
         results = await s2.search("LLM Agents")
+        for r in results:
+            print_result(r)
+
+        # 3. 测试知网
+        print("\n" + "=" * 60)
+        print(">>> Testing CNKI (知网)...")
+        print("=" * 60)
+        cnki = CNKITool(headless=True)
+        results = await cnki.search("深度学习", max_results=3)
         for r in results:
             print_result(r)
 
