@@ -29,7 +29,12 @@ pip install aiohttp xmltodict python-docx pymupdf trafilatura playwright Drissio
 playwright install chromium
 ```
 
-> 注：知网搜索功能首次运行时会自动下载 Chromium 浏览器。
+> 注：知网搜索功能**首次调用时**会自动下载 Chromium 浏览器到 `utils/browsers/` 目录（约 200MB），请确保网络畅通。
+
+**手动下载 Chromium（可选）：**
+```bash
+python utils/cnki/browser.py
+```
 
 ### 插件配置
 

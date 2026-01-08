@@ -12,16 +12,16 @@
     results = search_cnki("机器学习", sort_order="cited", max_results=20)
 """
 
-from cnki.api import (
+from .api import (
     ALL_FIELDS,
     SortOrder,
     get_article_info,
     search_cnki,
     search_cnki_simple,
 )
-from cnki.crawler import CNKICrawler
-from cnki.crawler_headless import CNKICrawlerHeadless
-from cnki.crawler_headless import SortOrder as CrawlerSortOrder
+from .crawler import CNKICrawler
+from .crawler_headless import CNKICrawlerHeadless
+from .crawler_headless import SortOrder as CrawlerSortOrder
 
 __all__ = [
     # API

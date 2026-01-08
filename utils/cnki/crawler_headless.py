@@ -16,7 +16,7 @@ from typing import Any
 
 from DrissionPage import Chromium, ChromiumOptions
 
-from cnki.browser import ensure_browser, find_chrome_path, setup_virtual_display
+from .browser import ensure_browser, find_chrome_path, setup_virtual_display
 
 
 class SortOrder(Enum):

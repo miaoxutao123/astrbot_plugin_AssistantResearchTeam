@@ -42,8 +42,8 @@ def search_cnki(
     browser_path: str | None = None,
 ) -> list[dict[str, Any]]:
     """搜索知网文献."""
-    from cnki.crawler_headless import CNKICrawlerHeadless
-    from cnki.crawler_headless import SortOrder as CrawlerSortOrder
+    from .crawler_headless import CNKICrawlerHeadless
+    from .crawler_headless import SortOrder as CrawlerSortOrder
 
     if isinstance(sort_order, str):
         sort_map = {
