@@ -161,17 +161,15 @@ def download_chromium_via_playwright() -> str | None:
     env = os.environ.copy()
     env["PLAYWRIGHT_BROWSERS_PATH"] = str(PLAYWRIGHT_BROWSERS_DIR)
     
-    # 下载chromium
-    print("正在下载Chromium...")
+    # 下载chromium（显示进度条）
+    print("正在下载Chromium（约200MB）...")
     try:
         result = subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
             env=env,
-            capture_output=True,
-            text=True,
         )
         if result.returncode != 0:
-            print(f"下载失败: {result.stderr}")
+            print("下载失败")
             return None
         print("下载完成")
     except Exception as e:
