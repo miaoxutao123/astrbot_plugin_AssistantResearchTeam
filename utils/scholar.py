@@ -133,15 +133,31 @@ class ArxivTool(AcademicBaseTool):
 
 
 class CNKITool:
-    """知网搜索工具（需要安装 zhiwang 包）"""
+    """知网搜索工具"""
+    
+    # 搜索字段映射
+    FIELD_MAP = {
+        "topic": "SU",      # 主题
+        "title": "TI",      # 篇名
+        "keywords": "KY",   # 关键词
+        "abstract": "AB",   # 摘要
+        "author": "AU",     # 作者
+        "institution": "AF" # 单位
+    }
     
     def __init__(self, headless: bool = True):
         self.headless = headless
         self._executor = ThreadPoolExecutor(max_workers=1)
     
-    async def search(self, query: str, max_results: int = 3) -> list[dict]:
+    async def search(
+        self,
+        query: str,
+        max_results: int = 5,
+        sort_by: str = "relevance",
+        search_field: str = "topic"
+    ) -> list[dict]:
         try:
-            from utils.cnki import search_cnki
+            from utils.cnki import search_cnki, SortOrder
         except ImportError:
             import sys
             import os
@@ -149,9 +165,18 @@ class CNKITool:
             if utils_dir not in sys.path:
                 sys.path.insert(0, utils_dir)
             try:
-                from cnki import search_cnki
+                from cnki import search_cnki, SortOrder
             except ImportError as e:
                 return [{"error": f"CNKI 模块未找到: {e}"}]
+        
+        # 映射排序方式
+        sort_map = {
+            "relevance": SortOrder.RELEVANCE,
+            "date": SortOrder.DATE,
+            "cited": SortOrder.CITED,
+            "download": SortOrder.DOWNLOAD
+        }
+        sort_order = sort_map.get(sort_by, SortOrder.RELEVANCE)
         
         loop = asyncio.get_event_loop()
         try:
@@ -161,6 +186,7 @@ class CNKITool:
                     keyword=query,
                     max_results=max_results,
                     headless=self.headless,
+                    sort_order=sort_order,
                     get_details=True
                 )
             )
@@ -168,14 +194,17 @@ class CNKITool:
             results = []
             for item in raw_results:
                 results.append({
-                    "source": "CNKI",
+                    "data_source": "CNKI",
                     "title": item.get("title"),
-                    "authors": item.get("authors") or item.get("first_author", ""),
-                    "year": (item.get("date") or "")[:4],
+                    "authors": item.get("author") or item.get("authors") or item.get("first_author", ""),
+                    "source": item.get("source", ""),  # 期刊/会议名称
+                    "year": (item.get("pub_date") or item.get("date") or "")[:4],
                     "abstract": item.get("abstract") or "无摘要",
-                    "pdf_url": item.get("url"),
+                    "pdf_url": item.get("url") or item.get("link"),
                     "doi": item.get("doi"),
-                    "keywords": item.get("keywords")
+                    "keywords": item.get("keywords"),
+                    "cite_count": item.get("cite_count"),
+                    "download_count": item.get("download_count")
                 })
             return results
         except Exception as e:

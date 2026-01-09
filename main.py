@@ -135,22 +135,49 @@ class ArxivSearchTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class CNKISearchTool(FunctionTool[AstrAgentContext]):
     name: str = "cnki_search"
-    description: str = "Use CNKITool to search for Chinese academic papers on CNKI (知网) based on keywords."
+    description: str = """Search Chinese academic papers on CNKI (中国知网).
+
+Supports searching by:
+- Topic/Subject (主题): General topic search, most comprehensive
+- Title (篇名): Search in paper titles only
+- Keywords (关键词): Search by author-defined keywords
+- Abstract (摘要): Search in abstracts
+- Author (作者): Search by author name
+- Institution (单位): Search by institution/university
+
+Sort options: relevance (相关度), date (发表时间), cited (被引量), download (下载量)
+
+Tips for better results:
+- Use specific Chinese terms for Chinese papers
+- For technical topics, include both Chinese and English terms (e.g., "混合专家模型 MoE")
+- Use author names in Chinese for Chinese authors"""
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
             "properties": {
                 "keywords": {
                     "type": "string",
-                    "description": "Keywords to search for academic papers on CNKI (知网).",
+                    "description": "Search query. Use specific Chinese terms for better results. Can include both Chinese and English terms.",
+                },
+                "search_field": {
+                    "type": "string",
+                    "description": "Search field: 'topic' (主题, default), 'title' (篇名), 'keywords' (关键词), 'abstract' (摘要), 'author' (作者), 'institution' (单位)",
+                    "default": "topic",
+                    "enum": ["topic", "title", "keywords", "abstract", "author", "institution"]
+                },
+                "sort_by": {
+                    "type": "string",
+                    "description": "Sort order: 'relevance' (相关度, default), 'date' (发表时间), 'cited' (被引量), 'download' (下载量)",
+                    "default": "relevance",
+                    "enum": ["relevance", "date", "cited", "download"]
                 },
                 "max_results": {
                     "type": "integer",
-                    "description": "Maximum number of search results to return.",
-                    "default": 3,
+                    "description": "Maximum number of results (1-20)",
+                    "default": 5,
                 }
             },
-            "required": ["keywords", "max_results"],
+            "required": ["keywords"],
         }
     )
 
@@ -160,23 +187,57 @@ class CNKISearchTool(FunctionTool[AstrAgentContext]):
         keyword = kwargs.get("keywords", "")
         if not keyword:
             return "Keywords are required."
-        max_results = kwargs.get("max_results", 3)
-        print(f"[CNKISearchTool] Searching for: {keyword}, max_results: {max_results}")
+        max_results = min(kwargs.get("max_results", 5), 20)
+        sort_by = kwargs.get("sort_by", "relevance")
+        search_field = kwargs.get("search_field", "topic")
+        
+        print(f"[CNKISearchTool] Searching: '{keyword}', field: {search_field}, sort: {sort_by}, max: {max_results}")
         cnki_tool = CNKITool(headless=True)
-        results = await cnki_tool.search(query=keyword, max_results=max_results)
-        print(f"[CNKISearchTool] Results: {results}")
+        results = await cnki_tool.search(
+            query=keyword,
+            max_results=max_results,
+            sort_by=sort_by,
+            search_field=search_field
+        )
+        print(f"[CNKISearchTool] Found {len(results)} results")
 
         if not results:
-            return "No results found."
+            return "No results found. Try different keywords or search field."
 
         if results and "error" in results[0]:
             return f"Search error: {results[0]['error']}"
 
-        response_lines = []
+        response_lines = [f"Found {len(results)} papers on CNKI:\n"]
         for idx, paper in enumerate(results, start=1):
-            response_lines.append(f"{idx}. Title: {paper.get('title', 'N/A')}\n   Authors: {paper.get('authors', 'N/A')}\n   Year: {paper.get('year', 'N/A')}\n   Abstract: {paper.get('abstract', 'N/A')}\n   URL: {paper.get('pdf_url', 'N/A')}\n")
+            lines = [f"{idx}. 【{paper.get('title', 'N/A')}】"]
+            if paper.get('authors'):
+                lines.append(f"   作者: {paper.get('authors')}")
+            if paper.get('source'):
+                lines.append(f"   来源: {paper.get('source')}")
+            if paper.get('year'):
+                lines.append(f"   年份: {paper.get('year')}")
+            # 被引量和下载量
+            stats = []
+            if paper.get('cite_count') and paper.get('cite_count') != '0':
+                stats.append(f"被引:{paper.get('cite_count')}")
+            if paper.get('download_count') and paper.get('download_count') != '0':
+                stats.append(f"下载:{paper.get('download_count')}")
+            if stats:
+                lines.append(f"   统计: {', '.join(stats)}")
+            if paper.get('abstract') and paper.get('abstract') != '无摘要':
+                abstract = paper.get('abstract', '')[:200]
+                if len(paper.get('abstract', '')) > 200:
+                    abstract += '...'
+                lines.append(f"   摘要: {abstract}")
+            if paper.get('keywords'):
+                lines.append(f"   关键词: {paper.get('keywords')}")
+            if paper.get('doi'):
+                lines.append(f"   DOI: {paper.get('doi')}")
+            if paper.get('pdf_url'):
+                lines.append(f"   链接: {paper.get('pdf_url')}")
+            response_lines.append("\n".join(lines))
 
-        return "\n".join(response_lines)
+        return "\n\n".join(response_lines)
 
 @dataclass
 class SmartReader(FunctionTool[AstrAgentContext]):
