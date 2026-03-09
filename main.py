@@ -268,7 +268,7 @@ class SmartReader(FunctionTool[AstrAgentContext]):
 @dataclass
 class DocumentProcessor(FunctionTool[AstrAgentContext]):
     name: str = "Document_Processor"
-    description: str = "A tool to create, read, write, delete, and list markdown or docx documents. Supports operations: create, read, write(append), write(cover), delete, list."
+    description: str = "A tool to create, read, write, delete, and list markdown or docx documents. Markdown-to-docx conversion supports tables, headings, lists, code blocks, quotes, and horizontal rules. Supports operations: create, read, write(append), write(cover), delete, list."
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",

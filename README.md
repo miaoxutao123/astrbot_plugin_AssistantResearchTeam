@@ -10,7 +10,7 @@
 
 **智能阅读器** - 自动识别 URL 类型（网页/PDF），使用 Playwright 渲染动态页面，提取正文内容并转换为 Markdown 格式，同时提取元数据和参考文献。
 
-**文档处理** - 支持 Markdown 和 Word 文档的创建、读取、写入、删除操作，可将 Markdown 内容转换为格式化的 Word 文档。
+**文档处理** - 支持 Markdown 和 Word 文档的创建、读取、写入、删除操作，可将 Markdown 内容转换为格式化的 Word 文档，现已支持 GitHub 风格 Markdown 表格转换。
 
 **文件发送** - 将生成的文档（.docx、.pdf、.md 等）直接发送给用户。
 

@@ -156,6 +156,11 @@ class MarkdownToWordConverter:
                 i += 1
                 continue
 
+            table_line_count = self._consume_table_block(lines, i)
+            if table_line_count:
+                i += table_line_count
+                continue
+
             # 处理标题
             if line.startswith("#"):
                 level = len(line) - len(line.lstrip("#"))
@@ -279,6 +284,139 @@ class MarkdownToWordConverter:
         """添加水平线（用段落边框模拟）"""
         para = self.doc.add_paragraph()
         para.add_run("─" * 50)
+
+    def _consume_table_block(self, lines: list[str], start_index: int) -> int:
+        if not self._is_table_block_start(lines, start_index):
+            return 0
+
+        block_lines = [lines[start_index], lines[start_index + 1]]
+        next_index = start_index + 2
+        while next_index < len(lines) and self._is_table_data_row(lines[next_index]):
+            block_lines.append(lines[next_index])
+            next_index += 1
+
+        self._add_table(block_lines)
+        return len(block_lines)
+
+    def _is_table_block_start(self, lines: list[str], index: int) -> bool:
+        if index + 1 >= len(lines):
+            return False
+
+        header_cells = self._split_table_row(lines[index])
+        separator_cells = self._split_table_row(lines[index + 1])
+        if not header_cells or not separator_cells:
+            return False
+        return self._is_table_separator(separator_cells, len(header_cells))
+
+    @staticmethod
+    def _is_table_data_row(line: str) -> bool:
+        stripped = line.strip()
+        return bool(stripped) and "|" in stripped
+
+    def _split_table_row(self, line: str) -> list[str]:
+        stripped = line.strip()
+        if not stripped or "|" not in stripped:
+            return []
+
+        body = stripped
+        if body.startswith("|"):
+            body = body[1:]
+        if body.endswith("|"):
+            body = body[:-1]
+
+        cells: list[str] = []
+        current: list[str] = []
+        in_code_span = False
+        escaped = False
+
+        for char in body:
+            if escaped:
+                current.append(char)
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == "`":
+                in_code_span = not in_code_span
+                current.append(char)
+                continue
+            if char == "|" and not in_code_span:
+                cells.append("".join(current).strip())
+                current = []
+                continue
+            current.append(char)
+
+        if escaped:
+            current.append("\\")
+        cells.append("".join(current).strip())
+        return cells
+
+    @staticmethod
+    def _is_table_separator(cells: list[str], expected_cols: int) -> bool:
+        if expected_cols <= 0 or len(cells) != expected_cols:
+            return False
+        return all(re.match(r"^:?-{3,}:?$", cell.strip()) for cell in cells)
+
+    @staticmethod
+    def _parse_table_column_alignments(cells: list[str]) -> list[int | None]:
+        alignments: list[int | None] = []
+        for cell in cells:
+            raw = cell.strip()
+            if raw.startswith(":") and raw.endswith(":"):
+                alignments.append(1)
+            elif raw.endswith(":"):
+                alignments.append(2)
+            elif raw.startswith(":"):
+                alignments.append(0)
+            else:
+                alignments.append(None)
+        return alignments
+
+    def _add_table(self, table_lines: list[str]):
+        header_cells = self._split_table_row(table_lines[0])
+        separator_cells = self._split_table_row(table_lines[1])
+        body_rows = [self._split_table_row(line) for line in table_lines[2:]]
+        column_count = max(
+            len(header_cells),
+            len(separator_cells),
+            *(len(row) for row in body_rows),
+        )
+        if column_count <= 0:
+            return
+
+        header_cells = self._normalize_table_row(header_cells, column_count)
+        alignments = self._normalize_table_row(
+            self._parse_table_column_alignments(separator_cells),
+            column_count,
+            fill=None,
+        )
+
+        table = self.doc.add_table(rows=1, cols=column_count)
+        table.style = "Table Grid"
+        self._fill_table_row(table.rows[0].cells, header_cells, alignments, is_header=True)
+        for row in body_rows:
+            row_cells = self._normalize_table_row(row, column_count)
+            self._fill_table_row(table.add_row().cells, row_cells, alignments, is_header=False)
+
+    @staticmethod
+    def _normalize_table_row(row: list, column_count: int, fill: str | None = "") -> list:
+        padded = list(row[:column_count])
+        if len(padded) < column_count:
+            padded.extend([fill] * (column_count - len(padded)))
+        return padded
+
+    def _fill_table_row(self, cells, values: list[str], alignments: list[int | None], is_header: bool):
+        for index, value in enumerate(values):
+            paragraph = cells[index].paragraphs[0]
+            paragraph.text = ""
+            alignment = alignments[index]
+            if alignment is not None:
+                paragraph.alignment = alignment
+            self._parse_inline_formatting(paragraph, value)
+            if is_header:
+                for run in paragraph.runs:
+                    run.bold = True
 
 
 def md_to_word(markdown_content: str, output_path: str) -> str:
